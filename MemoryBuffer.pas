@@ -9,9 +9,9 @@
 
   Memory buffer
 
-  ©František Milt 2018-01-17
+  ©František Milt 2018-01-22
 
-  Version 1.0
+  Version 1.0.1
 
   Dependencies:
     AuxTypes - github.com/ncs-sniper/Lib.AuxTypes
@@ -46,6 +46,8 @@ procedure ReallocBuffer(var Buff: TMemoryBuffer; NewSize: TMemSize);
 procedure ReallocBufferKeep(var Buff: TMemoryBuffer; NewSize: TMemSize; AllowShrink: Boolean = False);
 
 procedure CopyBuffer(const Src: TMemoryBuffer; out Copy: TMemoryBuffer);
+
+Function BuildBuffer(Memory: Pointer; Size: TMemSize; Data: PtrInt = 0): TMemoryBuffer;
 
 implementation
 
@@ -140,6 +142,15 @@ begin
 Copy := GetBuffer(Src.Size);
 Move(Src.Memory^,Copy.Memory^,Src.Size);
 Copy.Data := Src.Data;
+end;
+
+//------------------------------------------------------------------------------
+
+Function BuildBuffer(Memory: Pointer; Size: TMemSize; Data: PtrInt = 0): TMemoryBuffer;
+begin
+Result.Memory := Memory;
+Result.Size := Size;
+Result.Data := Data;
 end;
 
 end.
