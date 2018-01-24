@@ -19,6 +19,10 @@
 ===============================================================================}
 unit MemoryBuffer;
 
+{$IFDEF FPC}
+  {$MODE ObjFPC}{$H+}
+{$ENDIF}
+
 interface
 
 uses
