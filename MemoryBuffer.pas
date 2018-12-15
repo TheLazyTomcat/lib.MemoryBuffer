@@ -9,9 +9,9 @@
 
   Memory buffer
 
-  ©František Milt 2018-01-22
+  ©František Milt 2018-12-15
 
-  Version 1.0.1
+  Version 1.0.2
 
   Dependencies:
     AuxTypes - github.com/ncs-sniper/Lib.AuxTypes
@@ -36,6 +36,8 @@ type
   end;
   PMemoryBuffer = ^TMemoryBuffer;
 
+procedure InitBuffer(out Buff: TMemoryBuffer);
+
 procedure GetBuffer(var Buff: TMemoryBuffer); overload;
 procedure GetBuffer(out Buff: TMemoryBuffer; Size: TMemSize); overload;
 Function GetBuffer(Size: TMemSize): TMemoryBuffer; overload;
@@ -54,6 +56,13 @@ procedure CopyBuffer(const Src: TMemoryBuffer; out Copy: TMemoryBuffer);
 Function BuildBuffer(Memory: Pointer; Size: TMemSize; Data: PtrInt = 0): TMemoryBuffer;
 
 implementation
+
+procedure InitBuffer(out Buff: TMemoryBuffer);
+begin
+FillChar(Buff,SizeOf(TMemoryBuffer),0);
+end;
+
+//------------------------------------------------------------------------------
 
 procedure GetBuffer(var Buff: TMemoryBuffer);
 begin
