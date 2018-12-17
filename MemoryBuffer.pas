@@ -174,6 +174,7 @@ begin
 // destination buffer must be properly initialized
 ReallocBuffer(Dest,Src.Size);
 Move(Src.Memory^,Dest.Memory^,Dest.Size);
+Dest.Data := Src.Data;
 end;
 
 //------------------------------------------------------------------------------
