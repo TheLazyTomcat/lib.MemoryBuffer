@@ -39,7 +39,7 @@ type
   PMemoryBuffer = ^TMemoryBuffer;
 
 Function ValidBuffer(const Buff: TMemoryBuffer): Boolean;
-Function InitBuffer(out Buff: TMemoryBuffer): Boolean;
+procedure InitBuffer(out Buff: TMemoryBuffer);
 
 procedure GetBuffer(out Buff: TMemoryBuffer; Size: TMemSize); overload;
 procedure GetBuffer(var Buff: TMemoryBuffer); overload;
@@ -73,14 +73,13 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function InitBuffer(out Buff: TMemoryBuffer): Boolean;
+procedure InitBuffer(out Buff: TMemoryBuffer);
 begin
 Buff.Memory := nil;
 Buff.Size := 0;
 Buff.SigA := MEMBUFFER_SIGA;
 Buff.Data := 0;
 Buff.SigB := MEMBUFFER_SIGB;
-Result := False;
 end;
 
 //------------------------------------------------------------------------------
