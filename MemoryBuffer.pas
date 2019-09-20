@@ -91,7 +91,10 @@ type
 
 //- Exceptions -----------------------------------------------------------------
 
-  EMBInvalidBuffer = class(Exception);
+type
+  EMBException = class(Exception);
+
+  EMBInvalidBuffer = class(EMBException);
 
 //- initialization -------------------------------------------------------------
 
