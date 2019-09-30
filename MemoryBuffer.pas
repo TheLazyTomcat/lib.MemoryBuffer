@@ -31,9 +31,9 @@
     AllowShrink set to false.
     To access the data, always use indicated size.
 
-  Version 1.1a - requires extensive testing (2019-09-20)
+  Version 1.1.1 (2019-09-30)
 
-  Last change 2019-09-20
+  Last change 2019-09-30
 
   ©2015-2019 František Milt
 
@@ -327,6 +327,19 @@ procedure BufferStore(var Buff: TMemoryBuffer; Src: Pointer; Size: TMemSize); ov
 procedure Stream_WriteMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
 
 {
+  Stream_SaveMemoryBuffer
+
+  Writes user data and indicated size into the stream (both are stored as
+  unsigned 64bit integer) and then writes content (if any) of provided buffer.
+
+  If buffer is invalid, this function raises an EMBInvalidBuffer exception.
+
+  When Advance is true, the stream position is changed accordingly to number of
+  bytes written, otherwise it is preserved.
+}
+procedure Stream_SaveMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
+
+{
   Stream_ReadMemoryBuffer
 
   Reads data from a stream into provided buffer.
@@ -341,11 +354,25 @@ procedure Stream_WriteMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; A
 }
 procedure Stream_ReadMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
 
+{
+  Stream_LoadMemoryBuffer
+
+  Reads user data and indicated size from the stream, (re)allocates the buffer
+  as needed and then reads data into it.
+
+  If buffer is invalid, it will be properly initialized.
+
+  When Advance is true, the stream position is changed accordingly to number of
+  bytes written, otherwise it is preserved.
+}
+procedure Stream_LoadMemoryBuffer(Stream: TStream; var Buff: TMemoryBuffer; Advance: Boolean = True);
+
 implementation
 
 {$IFDEF FPC_DisableWarns}
   {$DEFINE FPCDWM}
   {$DEFINE W4055:={$WARN 4055 OFF}} // Conversion between ordinals and pointers is not portable
+  {$DEFINE W5057:={$WARN 5057 OFF}} // Local variable "$1" does not seem to be initialized
   {$PUSH}{$WARN 2005 OFF}           // Comment level $1 found
   {$IF Defined(FPC) and (FPC_FULLVERSION >= 30000)}
     {$DEFINE W5060:=}
@@ -537,7 +564,7 @@ procedure BufferCopy(const Src: TMemoryBuffer; var Dest: TMemoryBuffer);
 begin
 If BufferIsValid(Src) then
   begin
-    BufferRealloc(Dest,Src.Size); // allocates and uninitialized buffer
+    BufferRealloc(Dest,Src.Size); // allocates an uninitialized buffer
     Move(Src.Memory^,Dest.Memory^,Src.Size);
     Dest.UserData := Src.UserData;
     Dest.Checksum := BufferChecksum(Dest);
@@ -631,6 +658,30 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure Stream_SaveMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
+var
+  InitPos:  Int64;
+  Temp:     UInt64;
+begin
+If BufferIsValid(Buff) then
+  begin
+    InitPos := Stream.Position;
+    // save metadata (do not use binary streaming)
+    Temp := UInt64(Buff.UserData);
+    Stream.WriteBuffer(Temp,SizeOf(Temp));
+    Temp := UInt64(Buff.Size);
+    Stream.WriteBuffer(Temp,SizeOf(Temp));
+    // save content
+    If Buff.Size <> 0 then
+      Stream.WriteBuffer(Buff.Memory^,Int64(Buff.Size));
+    If not Advance then
+      Stream.Seek(InitPos,soBeginning);
+  end
+else raise EMBInvalidBuffer.Create('Stream_SaveMemoryBuffer: Invalid buffer.');
+end;
+
+//------------------------------------------------------------------------------
+
 procedure Stream_ReadMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
 begin
 If BufferIsValid(Buff) then
@@ -644,6 +695,30 @@ If BufferIsValid(Buff) then
   end
 else raise EMBInvalidBuffer.Create('Stream_ReadBuffer: Invalid buffer.');
 end;
+
+//------------------------------------------------------------------------------
+
+{$IFDEF FPCDWM}{$PUSH}W5057{$ENDIF}
+procedure Stream_LoadMemoryBuffer(Stream: TStream; var Buff: TMemoryBuffer; Advance: Boolean = True);
+var
+  InitPos:  Int64;
+  UserData: UInt64;
+  Size:     UInt64;
+begin
+InitPos := Stream.Position;
+// read metadata
+Stream.ReadBuffer(UserData,SizeOf(UserData));
+Stream.ReadBuffer(Size,SizeOf(Size));
+// prepare buffer
+BufferRealloc(Buff,TMemSize(Size)); // this also initializes the buffer when needed
+Buff.UserData := PtrInt(UserData);
+// load content
+If Buff.Size <> 0 then
+  Stream.ReadBuffer(Buff.Memory^,Int64(Buff.Size));
+If not Advance then
+  Stream.Seek(InitPos,soBeginning);
+end;
+{$IFDEF FPCDWM}{$POP}{$ENDIF}
 
 //==============================================================================
 
