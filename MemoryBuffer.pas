@@ -31,9 +31,9 @@
     AllowShrink set to false.
     To access the data, always use indicated size.
 
-  Version 1.1.1 (2019-09-30)
+  Version 1.1.2 (2019-10-16)
 
-  Last change 2019-09-30
+  Last change 2019-10-16
 
   ©2015-2019 František Milt
 
@@ -330,7 +330,8 @@ procedure Stream_WriteMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; A
   Stream_SaveMemoryBuffer
 
   Writes user data and indicated size into the stream (both are stored as
-  unsigned 64bit integer) and then writes content (if any) of provided buffer.
+  unsigned 64bit integer with little endianity) and then writes content
+  (if any) of provided buffer.
 
   If buffer is invalid, this function raises an EMBInvalidBuffer exception.
 
@@ -349,7 +350,7 @@ procedure Stream_SaveMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Ad
   When Advance is true, the stream position is changed accordingly to number of
   bytes read, otherwise it is preserved.
 
-  Number of bytes read read depends on indicated size of the buffer, so the
+  Number of bytes read depends on indicated size of the buffer, meaning the
   buffer must be properly allocated before a call to this function.
 }
 procedure Stream_ReadMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
@@ -396,7 +397,29 @@ begin
 {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
 Result := PtrUInt(Buff.Signature) xor PtrUInt(Buff.Memory) xor not PtrUInt(Buff.Size) xor not PtrUInt(Buff.AllocSize);
 {$IFDEF FPCDWM}{$POP}{$ENDIF}
-end;  
+end;
+
+//------------------------------------------------------------------------------
+
+Function AdjustEndianity(Val: UInt64): UInt64;
+{$IFDEF ENDIAN_BIG}
+  Function SwapEndian(A: UInt32): UInt32;
+  begin
+    Result := UInt32(
+      ((A and $000000FF) shl 24) or
+      ((A and $0000FF00) shl 8) or
+      ((A and $00FF0000) shr 8) or
+      ((A and $FF000000) shr 24));
+  end;
+
+begin
+Int64Rec(Val).Lo := SwapEndian(Int64Rec(Val).Hi);
+Int64Rec(Val).Hi := SwapEndian(Int64Rec(Val).Lo);
+{$ELSE}
+begin
+Result := Val;
+{$ENDIF}
+end;
 
 //==============================================================================
 
@@ -667,9 +690,9 @@ If BufferIsValid(Buff) then
   begin
     InitPos := Stream.Position;
     // save metadata (do not use binary streaming)
-    Temp := UInt64(Buff.UserData);
+    Temp := AdjustEndianity(UInt64(Buff.UserData));
     Stream.WriteBuffer(Temp,SizeOf(Temp));
-    Temp := UInt64(Buff.Size);
+    Temp := AdjustEndianity(UInt64(Buff.Size));
     Stream.WriteBuffer(Temp,SizeOf(Temp));
     // save content
     If Buff.Size <> 0 then
@@ -709,6 +732,10 @@ InitPos := Stream.Position;
 // read metadata
 Stream.ReadBuffer(UserData,SizeOf(UserData));
 Stream.ReadBuffer(Size,SizeOf(Size));
+{$IFDEF ENDIAN_BIG}
+UserData := AdjustEndianity(UserData);
+Size := AdjustEndianity(Size);
+{$ENDIF}
 // prepare buffer
 BufferRealloc(Buff,TMemSize(Size)); // this also initializes the buffer when needed
 Buff.UserData := PtrInt(UserData);
