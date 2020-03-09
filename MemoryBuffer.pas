@@ -33,9 +33,9 @@
 
   Version 1.1.2 (2019-10-16)
 
-  Last change 2019-10-16
+  Last change 2020-03-09
 
-  ©2015-2019 František Milt
+  ©2015-2020 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
@@ -164,6 +164,9 @@ Function BufferBuild(Memory: Pointer; Size: TMemSize; UserData: PtrInt = 0): TMe
 
   If an uninitialized buffer is passed into these functions, it is automatically
   initialized.
+
+  If buffer with already allocated memory is passed, the memory is freed before
+  a new memory is allocated.
 }
 procedure BufferGet(var Buff: TMemoryBuffer; Size: TMemSize); overload;
 Function BufferGet(Size: TMemSize): TMemoryBuffer; overload;
@@ -176,6 +179,9 @@ Function BufferGet(Size: TMemSize): TMemoryBuffer; overload;
 
   If an uninitialized buffer is passed into these functions, it is automatically
   initialized.
+
+  If buffer with already allocated memory is passed, the memory is freed before
+  a new memory is allocated.  
 }
 procedure BufferAlloc(var Buff: TMemoryBuffer; Size: TMemSize); overload;
 Function BufferAlloc(Size: TMemSize): TMemoryBuffer; overload;
@@ -198,9 +204,13 @@ procedure BufferFree(var Buff: TMemoryBuffer);
 
   Reallocates memory of the buffer (changes size while preserving stored data).
 
-  When AllowShrink is set to false, the memory is reallocated only when new
-  size is larger than currently allocated memory, otherwise the memory is
-  preserved as is and only indicated size is changed.
+  When AllowShrink is set to false, the memory is reallocated only if new size
+  is larger than currently allocated memory, if the new size is equal or smaller
+  then the memory is preserved as is and only indicated size is changed.
+  
+  When AllowShrink is true, the reallocation always takes place (for new size
+  equal to allocated size nothing happens, for new size of zero the bufer is
+  freed).
 
   If an uninitialized buffer is passed into this function, it is initialized
   and normally allocated - equivalent to calling BufferGet function.
