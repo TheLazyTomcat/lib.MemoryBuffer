@@ -33,7 +33,7 @@
 
   Version 1.1.2 (2019-10-16)
 
-  Last change 2020-03-09
+  Last change 2020-80-02
 
   ©2015-2020 František Milt
 
@@ -66,10 +66,11 @@ unit MemoryBuffer;
 {$IFEND}
 
 {$IFDEF FPC}
-  {$MODE ObjFPC}{$H+}
+  {$MODE ObjFPC}
   {$DEFINE FPC_DisableWarns}
   {$MACRO ON}
 {$ENDIF}
+{$H+}
 
 interface
 
