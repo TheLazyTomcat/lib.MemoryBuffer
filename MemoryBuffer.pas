@@ -33,7 +33,7 @@
 
   Version 1.1.2 (2019-10-16)
 
-  Last change 2020-80-02
+  Last change 2020-11-12
 
   ©2015-2020 František Milt
 
@@ -58,11 +58,11 @@
 unit MemoryBuffer;
 
 {$IF defined(CPU64) or defined(CPU64BITS)}
-  {$DEFINE 64bit}
+  {$DEFINE CPU64bit}
 {$ELSEIF defined(CPU16)}
   {$MESSAGE FATAL '16bit CPU not supported'}
 {$ELSE}
-  {$DEFINE 32bit}
+  {$DEFINE CPU32bit}
 {$IFEND}
 
 {$IFDEF FPC}
@@ -445,7 +445,7 @@ procedure BufferInit(out Buff: TMemoryBuffer);
 
   Function GetSignature: PtrUInt;
   begin
-  {$IFDEF 64bit}
+  {$IFDEF CPU64bit}
     Result := (PtrUInt(Random($10000)) shl 48) or (PtrUInt(Random($10000)) shl 32) or
               (PtrUInt(Random($10000)) shl 16) or PtrUInt(Random($10000)) ;
   {$ELSE}
