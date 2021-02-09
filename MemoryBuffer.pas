@@ -31,11 +31,11 @@
     AllowShrink set to false.
     To access the data, always use indicated size.
 
-  Version 1.1.2 (2019-10-16)
+  Version 1.1.3 (2021-02-10)
 
-  Last change 2020-11-12
+  Last change 2021-02-10
 
-  ©2015-2020 František Milt
+  ©2015-2021 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
@@ -96,6 +96,7 @@ type
   EMBException = class(Exception);
 
   EMBInvalidBuffer = class(EMBException);
+  EMBInvalidValue  = class(EMBException);
 
 //- initialization -------------------------------------------------------------
 
@@ -260,7 +261,20 @@ procedure BufferCopy(const Src: TMemoryBuffer; var Dest: TMemoryBuffer); overloa
 
   When the passed buffer is invalid, it returns nil.
 }
-Function BufferMemory(const Buff: TMemoryBuffer): Pointer;
+Function BufferMemory(const Buff: TMemoryBuffer): Pointer; overload;
+
+{
+  BufferMemory
+
+  Returns offset memory location within the buffer (address of the allocated
+  buffer, plus given offset).
+
+  When the passed buffer is invalid, it returns nil.
+
+  If the offset is larger than indicated size, the function will raise an
+  EMBInvalidValue exception.
+}
+Function BufferMemory(const Buff: TMemoryBuffer; Offset: TMemSize): Pointer; overload;
 
 {
   BufferSize
@@ -614,6 +628,22 @@ If BufferIsValid(Buff) then
   Result := Buff.Memory
 else
   Result := nil;
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Function BufferMemory(const Buff: TMemoryBuffer; Offset: TMemSize): Pointer;
+begin
+If BufferIsValid(Buff) then
+  begin
+  {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
+    If Offset <= Buff.Size then 
+      Result := Pointer(PtrUInt(Buff.Memory) + PtrUInt(Offset))
+    else
+      raise EMBInvalidValue.CreateFmt('BufferMemory: Offset (%p) out of allowed range.',[Pointer(Offset)]);
+  {$IFDEF FPCDWM}{$POP}{$ENDIF}
+  end
+else Result := nil;
 end;
  
 //------------------------------------------------------------------------------
