@@ -31,9 +31,9 @@
     AllowShrink set to false.
     To access the data, always use indicated size.
 
-  Version 1.1.3 (2021-02-10)
+  Version 1.1.4 (2021-10-15)
 
-  Last change 2021-02-10
+  Last change 2021-10-15
 
   ©2015-2021 František Milt
 
@@ -78,6 +78,12 @@ uses
   SysUtils, Classes,
   AuxTypes;
 
+{===============================================================================
+    Memory Buffer - declaration
+===============================================================================}
+{-------------------------------------------------------------------------------
+    Memory Buffer - main structure
+-------------------------------------------------------------------------------}
 type
   TMemoryBuffer = record
     Memory:     Pointer;
@@ -90,7 +96,9 @@ type
   end;
   PMemoryBuffer = ^TMemoryBuffer;
 
-//- Exceptions -----------------------------------------------------------------
+{-------------------------------------------------------------------------------
+    Memory Buffer - exception classes
+-------------------------------------------------------------------------------}
 
 type
   EMBException = class(Exception);
@@ -98,8 +106,9 @@ type
   EMBInvalidBuffer = class(EMBException);
   EMBInvalidValue  = class(EMBException);
 
-//- initialization -------------------------------------------------------------
-
+{-------------------------------------------------------------------------------
+    Memory Buffer - validity routines
+-------------------------------------------------------------------------------}
 {
   BufferIsValid
 
@@ -113,6 +122,7 @@ type
 }
 Function BufferIsValid(const Buff: TMemoryBuffer): Boolean;
 
+//------------------------------------------------------------------------------
 {
   BufferInit
 
@@ -129,6 +139,7 @@ Function BufferIsValid(const Buff: TMemoryBuffer): Boolean;
 }
 procedure BufferInit(out Buff: TMemoryBuffer);
 
+//------------------------------------------------------------------------------
 {
   BufferFinal
 
@@ -142,30 +153,20 @@ procedure BufferInit(out Buff: TMemoryBuffer);
 }
 procedure BufferFinal(var Buff: TMemoryBuffer);
 
-{
-  BufferBuild
 
-  Builds a new buffer from provided memory location.
-
-  Note that the provided pointer is directly incorporated into the buffer
-  without any checking and without any copying, so make sure it is valid and
-  do not free it after calling this function. Instead, leave the freeing on
-  the buffer itself.
-  This also means that the provided pointer is required to be previously
-  allocated using standard memory management functions (GetMem, AllocMem,
-  ReallocMem)
-}
-Function BufferBuild(Memory: Pointer; Size: TMemSize; UserData: PtrInt = 0): TMemoryBuffer;
-
-//- allocation -----------------------------------------------------------------
-
+{-------------------------------------------------------------------------------
+    Memory Buffer - allocation, freeing
+-------------------------------------------------------------------------------}
 {
   BufferGet
 
   Allocates memory of requested size for the buffer.
 
-  If an uninitialized buffer is passed into these functions, it is automatically
+  If an uninitialized buffer is passed into this function, it is automatically
   initialized.
+
+    WARNING - the second override always initializes the result, irrespective
+              of where it will be assigned.
 
   If buffer with already allocated memory is passed, the memory is freed before
   a new memory is allocated.
@@ -173,14 +174,18 @@ Function BufferBuild(Memory: Pointer; Size: TMemSize; UserData: PtrInt = 0): TMe
 procedure BufferGet(var Buff: TMemoryBuffer; Size: TMemSize); overload;
 Function BufferGet(Size: TMemSize): TMemoryBuffer; overload;
 
+//------------------------------------------------------------------------------
 {
   BufferAlloc
 
   Allocates memory of requested size for the buffer, and initializes this
   memory (fills it with zeroes).
 
-  If an uninitialized buffer is passed into these functions, it is automatically
+  If an uninitialized buffer is passed into this function, it is automatically
   initialized.
+
+    WARNING - the second override always initializes the result, irrespective
+              of where it will be assigned.  
 
   If buffer with already allocated memory is passed, the memory is freed before
   a new memory is allocated.  
@@ -188,6 +193,7 @@ Function BufferGet(Size: TMemSize): TMemoryBuffer; overload;
 procedure BufferAlloc(var Buff: TMemoryBuffer; Size: TMemSize); overload;
 Function BufferAlloc(Size: TMemSize): TMemoryBuffer; overload;
 
+//------------------------------------------------------------------------------
 {
   BufferFree
 
@@ -201,26 +207,47 @@ Function BufferAlloc(Size: TMemSize): TMemoryBuffer; overload;
 }
 procedure BufferFree(var Buff: TMemoryBuffer);
 
+//------------------------------------------------------------------------------
 {
   BufferRealloc
 
   Reallocates memory of the buffer (changes size while preserving stored data).
 
-  When AllowShrink is set to false, the memory is reallocated only if new size
-  is larger than currently allocated memory, if the new size is equal or smaller
+  When the buffer is enlarged, the content of newly allocated memory is
+  undefined. When it is shrinked, data beyond the new size are removed.
+
+  For AllowShrink set to false, the memory is reallocated only if new size is
+  larger than currently allocated memory, if the new size is equal or smaller
   then the memory is preserved as is and only indicated size is changed.
-  
-  When AllowShrink is true, the reallocation always takes place (for new size
-  equal to allocated size nothing happens, for new size of zero the bufer is
-  freed).
+
+  For AllowShrink set to true, the reallocation always takes place (for new
+  size equal to allocated size nothing happens, for new size of zero the bufer
+  is freed).
 
   If an uninitialized buffer is passed into this function, it is initialized
-  and normally allocated - equivalent to calling BufferGet function.
+  and normally allocated - equivalent to calling BufferAlloc function.
 }
 procedure BufferRealloc(var Buff: TMemoryBuffer; NewSize: TMemSize; AllowShrink: Boolean = True);
 
-//- manipulation ---------------------------------------------------------------
 
+{-------------------------------------------------------------------------------
+    Memory Buffer - whole buffer manipulation
+-------------------------------------------------------------------------------}
+{
+  BufferCopy
+
+  Copies indicated data from source buffer into preexisting destination buffer,
+  reallocating it if required. Also copies user data.
+
+  If the destination buffer is not initialized, it will be initialized and
+  allocated to required size.
+
+  If the passed source buffer is not valid, this function will raise an
+  EMBInvalidBuffer exception.
+}
+procedure BufferCopy(const Src: TMemoryBuffer; var Dest: TMemoryBuffer); overload;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 {
   BufferCopy
 
@@ -238,31 +265,10 @@ procedure BufferRealloc(var Buff: TMemoryBuffer; NewSize: TMemSize; AllowShrink:
 }
 Function BufferCopy(const Src: TMemoryBuffer): TMemoryBuffer; overload;
 
-{
-  BufferCopy
 
-  Copies indicated data from source buffer into preexisting destination buffer,
-  reallocating it if required. Also copies user data.
-
-  If the destination buffer is not initialized, it will be initialized and
-  allocated to required size.
-
-  If the passed source buffer is not valid, this function will raise an
-  EMBInvalidBuffer exception.
-}
-procedure BufferCopy(const Src: TMemoryBuffer; var Dest: TMemoryBuffer); overload;
-
-//- data access ----------------------------------------------------------------
-
-{
-  BufferMemory
-
-  Returns pointer to the memory location allocated for the buffer.
-
-  When the passed buffer is invalid, it returns nil.
-}
-Function BufferMemory(const Buff: TMemoryBuffer): Pointer; overload;
-
+{-------------------------------------------------------------------------------
+    Memory Buffer - data access
+-------------------------------------------------------------------------------}
 {
   BufferMemory
 
@@ -274,8 +280,9 @@ Function BufferMemory(const Buff: TMemoryBuffer): Pointer; overload;
   If the offset is larger than indicated size, the function will raise an
   EMBInvalidValue exception.
 }
-Function BufferMemory(const Buff: TMemoryBuffer; Offset: TMemSize): Pointer; overload;
+Function BufferMemory(const Buff: TMemoryBuffer; Offset: TMemSize = 0): Pointer;
 
+//------------------------------------------------------------------------------
 {
   BufferSize
 
@@ -286,6 +293,7 @@ Function BufferMemory(const Buff: TMemoryBuffer; Offset: TMemSize): Pointer; ove
 }
 Function BufferSize(const Buff: TMemoryBuffer): TMemSize;
 
+//------------------------------------------------------------------------------
 {
   BufferAllocSize
 
@@ -296,6 +304,7 @@ Function BufferSize(const Buff: TMemoryBuffer): TMemSize;
 }
 Function BufferAllocSize(const Buff: TMemoryBuffer): TMemSize;
 
+//------------------------------------------------------------------------------
 {
   BufferGetUserData
 
@@ -305,6 +314,7 @@ Function BufferAllocSize(const Buff: TMemoryBuffer): TMemSize;
 }
 Function BufferGetUserData(const Buff: TMemoryBuffer): PtrInt;
 
+//------------------------------------------------------------------------------
 {
   BufferSetUserData
 
@@ -314,8 +324,10 @@ Function BufferGetUserData(const Buff: TMemoryBuffer): PtrInt;
 }
 Function BufferSetUserData(var Buff: TMemoryBuffer; UserData: PtrInt): PtrInt;
 
-//- utility function -----------------------------------------------------------
 
+{-------------------------------------------------------------------------------
+    Memory Buffer - data read/write
+-------------------------------------------------------------------------------}
 {
   BufferStore
 
@@ -326,16 +338,50 @@ Function BufferSetUserData(var Buff: TMemoryBuffer; UserData: PtrInt): PtrInt;
 }
 procedure BufferStore(var Buff: TMemoryBuffer; const Src; Size: TMemSize); overload;
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 {
   BufferStore
 
   Stores data from provided memory location of given size into the buffer,
   reallocating the buffer if necessary.
 
-  If the passed buffer is invalid, it is first initialized.  
+  If the passed buffer is invalid, it is first initialized.
 }
 procedure BufferStore(var Buff: TMemoryBuffer; Src: Pointer; Size: TMemSize); overload;
 
+//------------------------------------------------------------------------------
+{
+  BufferWrite
+
+  Writes Count number of bytes from untyped variable Src into the buffer memory
+  at a given offset from the beginning.
+
+  If the passed buffer is invalid, it is first initialized and allocated.
+
+  The buffer is enlarged when written data cannot fit. If thre is gap between
+  currently buffered data and written data, then content of this gap is
+  undefined.
+}
+procedure BufferWrite(var Buff: TMemoryBuffer; const Src; Count: TMemSize; Offset: TMemSize = 0);
+
+//------------------------------------------------------------------------------
+{
+  BufferRead
+
+  Reads Count number of bytes from buffered data at given offset into untyped
+  variable Dest.
+
+  If the passed buffer is invalid, then an EMBInvalidBuffer exception is raised.
+
+  If the required data are outside of the buffer, either due to offset or count
+  being too large, then an EMBInvalidValue exception is raised.
+}
+procedure BufferRead(const Buff: TMemoryBuffer; out Dest; Count: TMemSize; Offset: TMemSize = 0);
+
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - buffered data streaming
+-------------------------------------------------------------------------------}
 {
   Stream_WriteMemoryBuffer
 
@@ -351,6 +397,7 @@ procedure BufferStore(var Buff: TMemoryBuffer; Src: Pointer; Size: TMemSize); ov
 }
 procedure Stream_WriteMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
 
+//------------------------------------------------------------------------------
 {
   Stream_SaveMemoryBuffer
 
@@ -365,6 +412,7 @@ procedure Stream_WriteMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; A
 }
 procedure Stream_SaveMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
 
+//------------------------------------------------------------------------------
 {
   Stream_ReadMemoryBuffer
 
@@ -380,6 +428,7 @@ procedure Stream_SaveMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Ad
 }
 procedure Stream_ReadMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
 
+//------------------------------------------------------------------------------
 {
   Stream_LoadMemoryBuffer
 
@@ -393,29 +442,71 @@ procedure Stream_ReadMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Ad
 }
 procedure Stream_LoadMemoryBuffer(Stream: TStream; var Buff: TMemoryBuffer; Advance: Boolean = True);
 
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - utility functions
+-------------------------------------------------------------------------------}
+{
+  BufferBuild
+
+  Builds a new buffer from provided memory location.
+
+  Note that the provided pointer is directly incorporated into the buffer
+  without any checking and without any copying, so make sure it is valid and
+  do not free it after calling this function. Instead, leave the freeing on
+  the buffer itself.
+  This also means that the provided pointer is required to be previously
+  allocated using standard memory management functions (GetMem, AllocMem,
+  ReallocMem).
+
+  If you want to create a buffer that contains a copy of provided data, not
+  direct reference, use function BufferStore.
+}
+Function BufferBuild(Memory: Pointer; Size: TMemSize; UserData: PtrInt = 0): TMemoryBuffer;
+
+//------------------------------------------------------------------------------
+{
+  BufferCompress
+
+  Sets allocated size to indicated size when they differ, reallocating memory
+  and moving data when necessary.
+
+  Does nothing for invalid buffers.
+
+  Returns true when a reallocation was performed, false when nothing was done
+  (invalid buffer or there is no need for reallocation).
+}
+Function BufferCompress(var Buff: TMemoryBuffer): Boolean;
+
+//------------------------------------------------------------------------------
+{
+  BufferClear
+
+  Fills the buffer with zeroes.
+
+    NOTE - fills only indicated size.
+
+  Does nothing for invalid buffers.
+}
+procedure BufferClear(var Buff: TMemoryBuffer);
+
+
 implementation
 
 {$IFDEF FPC_DisableWarns}
   {$DEFINE FPCDWM}
   {$DEFINE W4055:={$WARN 4055 OFF}} // Conversion between ordinals and pointers is not portable
-  {$DEFINE W5057:={$WARN 5057 OFF}} // Local variable "$1" does not seem to be initialized
-  {$PUSH}{$WARN 2005 OFF}           // Comment level $1 found
-  {$IF Defined(FPC) and (FPC_FULLVERSION >= 30000)}
-    {$DEFINE W5060:=}
-    {$DEFINE W5092:={$WARN 5092 OFF}} // Variable "$result" of a managed type does not seem to be initialized
-    {$DEFINE W5094:={$WARN 5094 OFF}} // Function result variable of a managed type does not seem to be initialized
-  {$ELSE}
-    {$DEFINE W5060:={$WARN 5060 OFF}} // Function result variable of a managed type does not seem to be initialized
-    {$DEFINE W5092:=}
-    {$DEFINE W5094:=}
-  {$IFEND}
-  {$POP}
 {$ENDIF}
 
+{===============================================================================
+    Memory Buffer - implementation
+===============================================================================}
 const
   MB_CHECK_STRING = 'VALID';
 
-//- internal utility functions -------------------------------------------------
+{-------------------------------------------------------------------------------
+    Memory Buffer - internal routines
+-------------------------------------------------------------------------------}
 
 Function BufferChecksum(const Buff: TMemoryBuffer): PtrUInt;
 begin
@@ -446,7 +537,10 @@ Result := Val;
 {$ENDIF}
 end;
 
-//==============================================================================
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - validity routines
+-------------------------------------------------------------------------------}
 
 Function BufferIsValid(const Buff: TMemoryBuffer): Boolean;
 begin
@@ -488,19 +582,10 @@ Buff.Checksum := PtrUInt(-1);
 Buff.CheckStr := '';
 end;
 
-//------------------------------------------------------------------------------
 
-Function BufferBuild(Memory: Pointer; Size: TMemSize; UserData: PtrInt = 0): TMemoryBuffer;
-begin
-BufferInit(Result);
-Result.Memory := Memory;
-Result.Size := Size;
-Result.AllocSize := Size;
-Result.UserData := UserData;
-Result.Checksum := BufferChecksum(Result);
-end;
-
-//==============================================================================
+{-------------------------------------------------------------------------------
+    Memory Buffer - allocation, freeing
+-------------------------------------------------------------------------------}
 
 procedure BufferGet(var Buff: TMemoryBuffer; Size: TMemSize);
 begin
@@ -522,12 +607,11 @@ end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-{$IFDEF FPCDWM}{$PUSH}W5060 W5092 W5094{$ENDIF}
 Function BufferGet(Size: TMemSize): TMemoryBuffer;
 begin
+BufferInit(Result);
 BufferGet(Result,Size);
 end;
-{$IFDEF FPCDWM}{$POP}{$ENDIF}
 
 //------------------------------------------------------------------------------
 
@@ -539,12 +623,11 @@ end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-{$IFDEF FPCDWM}{$PUSH}W5060 W5092 W5094{$ENDIF}
 Function BufferAlloc(Size: TMemSize): TMemoryBuffer;
 begin
+BufferInit(Result);
 BufferAlloc(Result,Size);
 end;
-{$IFDEF FPCDWM}{$POP}{$ENDIF}
 
 //------------------------------------------------------------------------------
 
@@ -589,24 +672,13 @@ If BufferIsValid(Buff) then
     else Buff.Size := NewSize;
     Buff.Checksum := BufferChecksum(Buff);
   end
-else BufferGet(Buff,NewSize);
+else BufferAlloc(Buff,NewSize);
 end;
 
-//==============================================================================
 
-Function BufferCopy(const Src: TMemoryBuffer): TMemoryBuffer;
-begin
-If BufferIsValid(Src) then
-  begin
-    Result := BufferGet(Src.Size);  // this will also init the result
-    Move(Src.Memory^,Result.Memory^,Src.Size);
-    Result.UserData := Src.UserData;
-    Result.Checksum := BufferChecksum(Result);
-  end
-else raise EMBInvalidBuffer.Create('BufferCopy: Invalid source buffer, cannot make a copy.');
-end;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+{-------------------------------------------------------------------------------
+    Memory Buffer - whole buffer manipulation
+-------------------------------------------------------------------------------}
 
 procedure BufferCopy(const Src: TMemoryBuffer; var Dest: TMemoryBuffer);
 begin
@@ -620,19 +692,26 @@ If BufferIsValid(Src) then
 else raise EMBInvalidBuffer.Create('BufferCopy: Invalid source buffer, cannot make a copy.');
 end;
 
-//==============================================================================
-
-Function BufferMemory(const Buff: TMemoryBuffer): Pointer;
-begin
-If BufferIsValid(Buff) then
-  Result := Buff.Memory
-else
-  Result := nil;
-end;
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-Function BufferMemory(const Buff: TMemoryBuffer; Offset: TMemSize): Pointer;
+Function BufferCopy(const Src: TMemoryBuffer): TMemoryBuffer;
+begin
+If BufferIsValid(Src) then
+  begin
+    Result := BufferGet(Src.Size);  // this will also init the result
+    Move(Src.Memory^,Result.Memory^,Src.Size);
+    Result.UserData := Src.UserData;
+    Result.Checksum := BufferChecksum(Result);
+  end
+else raise EMBInvalidBuffer.Create('BufferCopy: Invalid source buffer, cannot make a copy.');
+end;
+
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - data access
+-------------------------------------------------------------------------------}
+
+Function BufferMemory(const Buff: TMemoryBuffer; Offset: TMemSize = 0): Pointer;
 begin
 If BufferIsValid(Buff) then
   begin
@@ -688,7 +767,10 @@ If BufferIsValid(Buff) then
 else Result := 0;
 end;
 
-//==============================================================================
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - data read/write
+-------------------------------------------------------------------------------}
 
 procedure BufferStore(var Buff: TMemoryBuffer; const Src; Size: TMemSize);
 begin
@@ -706,6 +788,46 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure BufferWrite(var Buff: TMemoryBuffer; const Src; Count: TMemSize; Offset: TMemSize = 0);
+begin
+If BufferIsValid(Buff) then
+  begin
+    If (Offset + Count) > Buff.Size then
+      BufferRealloc(Buff,Offset + Count);
+  end
+else BufferAlloc(Buff,Offset + Count);
+{$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
+Move(Src,Pointer(PtrUInt(Buff.Memory) + PtrUInt(Offset))^,Count);
+{$IFDEF FPCDWM}{$POP}{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+procedure BufferRead(const Buff: TMemoryBuffer; out Dest; Count: TMemSize; Offset: TMemSize = 0);
+begin
+If BufferIsValid(Buff) then
+  begin
+    If Offset < Buff.Size then
+      begin
+        If (Offset + Count) <= Buff.Size then
+        {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
+          Move(Pointer(PtrUInt(Buff.Memory) + PtrUInt(Offset))^,Addr(Dest)^,Count)
+        {$IFDEF FPCDWM}{$POP}{$ENDIF}
+        else
+          raise EMBInvalidValue.CreateFmt('BufferRead: Count (%u) too large.',[Count]);
+      end
+  {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
+    else raise EMBInvalidValue.CreateFmt('BufferRead: Offset (%p) out of allowed range.',[Pointer(Offset)]);
+  {$IFDEF FPCDWM}{$POP}{$ENDIF}
+  end
+else raise EMBInvalidBuffer.Create('BufferRead: Invalid buffer, cannot read data.');
+end;
+
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - buffered data streaming
+-------------------------------------------------------------------------------}
+
 procedure Stream_WriteMemoryBuffer(Stream: TStream; const Buff: TMemoryBuffer; Advance: Boolean = True);
 begin
 If BufferIsValid(Buff) then
@@ -717,7 +839,7 @@ If BufferIsValid(Buff) then
           Stream.Seek(-Int64(Buff.Size),soCurrent);
       end;
   end
-else raise EMBInvalidBuffer.Create('Stream_WriteBuffer: Invalid buffer.');
+else raise EMBInvalidBuffer.Create('Stream_WriteMemoryBuffer: Invalid buffer.');
 end;
 
 //------------------------------------------------------------------------------
@@ -730,7 +852,7 @@ begin
 If BufferIsValid(Buff) then
   begin
     InitPos := Stream.Position;
-    // save metadata (do not use binary streaming)
+    // save metadata (do not use BinaryStreaming library)
     Temp := AdjustEndianity(UInt64(Buff.UserData));
     Stream.WriteBuffer(Temp,SizeOf(Temp));
     Temp := AdjustEndianity(UInt64(Buff.Size));
@@ -757,12 +879,11 @@ If BufferIsValid(Buff) then
           Stream.Seek(-Int64(Buff.Size),soCurrent);
       end;
   end
-else raise EMBInvalidBuffer.Create('Stream_ReadBuffer: Invalid buffer.');
+else raise EMBInvalidBuffer.Create('Stream_ReadMemoryBuffer: Invalid buffer.');
 end;
 
 //------------------------------------------------------------------------------
 
-{$IFDEF FPCDWM}{$PUSH}W5057{$ENDIF}
 procedure Stream_LoadMemoryBuffer(Stream: TStream; var Buff: TMemoryBuffer; Advance: Boolean = True);
 var
   InitPos:  Int64;
@@ -771,8 +892,8 @@ var
 begin
 InitPos := Stream.Position;
 // read metadata
-Stream.ReadBuffer(UserData,SizeOf(UserData));
-Stream.ReadBuffer(Size,SizeOf(Size));
+Stream.ReadBuffer(Addr(UserData)^,SizeOf(UserData));
+Stream.ReadBuffer(Addr(Size)^,SizeOf(Size));
 {$IFDEF ENDIAN_BIG}
 UserData := AdjustEndianity(UserData);
 Size := AdjustEndianity(Size);
@@ -786,9 +907,50 @@ If Buff.Size <> 0 then
 If not Advance then
   Stream.Seek(InitPos,soBeginning);
 end;
-{$IFDEF FPCDWM}{$POP}{$ENDIF}
 
-//==============================================================================
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - utility functions
+-------------------------------------------------------------------------------}
+
+Function BufferBuild(Memory: Pointer; Size: TMemSize; UserData: PtrInt = 0): TMemoryBuffer;
+begin
+BufferInit(Result);
+Result.Memory := Memory;
+Result.Size := Size;
+Result.AllocSize := Size;
+Result.UserData := UserData;
+Result.Checksum := BufferChecksum(Result);
+end;
+
+//------------------------------------------------------------------------------
+
+Function BufferCompress(var Buff: TMemoryBuffer): Boolean;
+begin
+Result := False;
+If BufferIsValid(Buff) then
+  If (Buff.AllocSize <> 0) and (Buff.Size <> Buff.AllocSize) then
+    begin
+      ReallocMem(Buff.Memory,Buff.Size);
+      Buff.AllocSize := Buff.Size;
+      Buff.Checksum := BufferChecksum(Buff);
+      Result := True;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure BufferClear(var Buff: TMemoryBuffer);
+begin
+If BufferIsValid(Buff) then
+  If Buff.Size <> 0 then
+    FillChar(Buff.Memory^,Buff.Size,0);
+end;
+
+
+{-------------------------------------------------------------------------------
+    Memory Buffer - unit management
+-------------------------------------------------------------------------------}
 
 initialization
   Randomize;  // required for signatures generation 
